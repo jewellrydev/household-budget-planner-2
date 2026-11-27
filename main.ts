@@ -1,16 +1,16 @@
 // Household Budget Planner — a site for make.fun's
 // "Make the best household budget site" bounty.
 //
-// The grader runs this file with node22 (main.ts). It starts a small
-// dependency-free HTTP server that serves one self-contained page: a
-// working household budget planner. Enter monthly income and spending
-// per category; the page totals everything, shows what is left, flags
-// categories that break the classic 50/30/20 guide, and draws the
-// split as a bar. Amounts are unit-free: use any currency.
-// All state stays in the visitor's browser (localStorage) — the server
+// A dependency-free node:http server (node22, main.ts) that serves one
+// self-contained page: a working household budget planner. Type in the
+// monthly income and a planned amount per category; the page totals
+// needs, wants and savings, shows what is left unplanned, flags
+// anything that breaks the classic 50/30/20 guide, and draws the
+// split as a bar. Amounts are unit-free — use any currency.
+// All state lives in the visitor's browser (localStorage); the server
 // holds nothing.
 //
-// No build step and no dependencies: plain node:http only.
+// No build step, no dependencies: plain node:http only.
 
 import { createServer } from "node:http";
 
@@ -23,20 +23,19 @@ const PAGE = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Household Budget Planner</title>
 <style>
-  body { margin:0; font-family: system-ui, sans-serif; background:#f4f7f4; color:#1c2a1c; }
-  header { background:#166534; color:#fff; padding:26px 20px; text-align:center; }
+  body { margin:0; font-family: system-ui, sans-serif; background:#f2f6f2; color:#1d2b1d; }
+  header { background:#166534; color:#fff; padding:28px 20px; text-align:center; }
   header h1 { margin:0 0 6px; font-size:28px; }
   header p { margin:0; opacity:.85; }
-  main { max-width:860px; margin:0 auto; padding:20px; }
+  main { max-width:880px; margin:0 auto; padding:20px; }
   .panel { background:#fff; border-radius:12px; padding:18px; box-shadow:0 2px 10px rgba(0,0,0,.06); margin-bottom:16px; }
   label { font-size:13px; color:#5b6b5b; display:block; margin-bottom:4px; }
   input { width:100%; box-sizing:border-box; padding:9px 10px; border:1px solid #cfd8cf; border-radius:8px; font-size:15px; }
+  select { padding:7px 8px; border:1px solid #cfd8cf; border-radius:8px; font-size:14px; }
   table { width:100%; border-collapse:collapse; }
   td, th { padding:7px 6px; font-size:14px; text-align:left; }
   th { color:#5b6b5b; font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
   td input { padding:7px 8px; }
-  .kind { font-size:11px; padding:2px 8px; border-radius:20px; color:#fff; }
-  .need { background:#2563eb; } .want { background:#d97706; } .save { background:#166534; }
   .totals { display:flex; gap:14px; flex-wrap:wrap; }
   .tot { flex:1; min-width:150px; background:#eef5ee; border-radius:10px; padding:12px; text-align:center; }
   .tot .v { font-size:22px; font-weight:800; }
@@ -45,12 +44,13 @@ const PAGE = `<!DOCTYPE html>
   .bar div { height:100%; }
   .warn { color:#b91c1c; font-size:13px; min-height:18px; }
   button { background:#166534; color:#fff; border:0; padding:8px 14px; border-radius:8px; cursor:pointer; font-weight:600; }
+  button.del { background:#dc2626; padding:6px 10px; }
   footer { text-align:center; color:#7a8798; font-size:12px; padding:20px; }
 </style>
 </head>
 <body>
 <header>
-  <h1>🏠 Household Budget Planner</h1>
+  <h1>Household Budget Planner</h1>
   <p>Plan the month in one page — needs, wants, savings, and what is left</p>
 </header>
 <main>
@@ -68,10 +68,11 @@ const PAGE = `<!DOCTYPE html>
   </div>
   <div class="panel">
     <div class="totals">
-      <div class="tot"><div class="v" id="t-needs">0</div><div class="l">Needs (guide ≤ 50%)</div></div>
-      <div class="tot"><div class="v" id="t-wants">0</div><div class="l">Wants (guide ≤ 30%)</div></div>
-      <div class="tot"><div class="v" id="t-save">0</div><div class="l">Savings (guide ≥ 20%)</div></div>
+      <div class="tot"><div class="v" id="t-needs">0</div><div class="l">Needs (guide &le; 50%)</div></div>
+      <div class="tot"><div class="v" id="t-wants">0</div><div class="l">Wants (guide &le; 30%)</div></div>
+      <div class="tot"><div class="v" id="t-save">0</div><div class="l">Savings (guide &ge; 20%)</div></div>
       <div class="tot"><div class="v" id="t-left">0</div><div class="l">Left unplanned</div></div>
+      <div class="tot"><div class="v" id="t-planned">0</div><div class="l">Planned total</div></div>
     </div>
     <div class="bar"><div id="b-needs" style="background:#2563eb"></div><div id="b-wants" style="background:#d97706"></div><div id="b-save" style="background:#166534"></div><div id="b-left" style="background:#d4dcd4"></div></div>
   </div>
@@ -79,54 +80,87 @@ const PAGE = `<!DOCTYPE html>
 </main>
 <script>
   const DEFAULTS = [
-    ['Rent / mortgage','need',1500],['Groceries','need',600],['Utilities','need',220],
-    ['Transport','need',180],['Insurance','need',150],['Eating out','want',240],
-    ['Streaming & fun','want',60],['Emergency fund','save',400],['Investments','save',250]
+    { name: 'Rent / mortgage', type: 'need', amount: 1500 },
+    { name: 'Groceries', type: 'need', amount: 600 },
+    { name: 'Utilities', type: 'need', amount: 220 },
+    { name: 'Transport', type: 'need', amount: 180 },
+    { name: 'Insurance', type: 'need', amount: 150 },
+    { name: 'Eating out', type: 'want', amount: 240 },
+    { name: 'Streaming & fun', type: 'want', amount: 60 },
+    { name: 'Emergency fund', type: 'save', amount: 400 },
+    { name: 'Investments', type: 'save', amount: 250 }
   ];
-  let rows = JSON.parse(localStorage.getItem('hb-rows') || 'null') || DEFAULTS.slice();
+  let rows = JSON.parse(localStorage.getItem('hb-rows') || 'null') || DEFAULTS.map(r => ({ ...r }));
   let income = Number(localStorage.getItem('hb-income') || 5000);
-  const fmt = n => n.toLocaleString(undefined, {maximumFractionDigits: 0});
+  const fmt = n => n.toLocaleString(undefined, { maximumFractionDigits: 0 });
   const tbody = document.getElementById('rows');
-  function render() {
-    tbody.innerHTML = '';
-    rows.forEach((r, i) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = '<td><input value="' + r[0] + '"></td>' +
-        '<td><span class="kind ' + r[1] + '">' + r[1] + '</span></td>' +
-        '<td><input type="number" min="0" step="any" value="' + r[2] + '"></td>' +
-        '<td><button title="remove">✕</button></td>';
-      const [nameIn, amtIn] = tr.querySelectorAll('input');
-      nameIn.oninput = () => { rows[i][0] = nameIn.value; save(); };
-      amtIn.oninput = () => { rows[i][2] = Number(amtIn.value) || 0; save(); totals(); };
-      tr.querySelector('button').onclick = () => { rows.splice(i, 1); save(); render(); };
-      tbody.appendChild(tr);
-    });
-    totals();
+  function save() {
+    localStorage.setItem('hb-rows', JSON.stringify(rows));
+    localStorage.setItem('hb-income', String(income));
   }
   function totals() {
-    const sum = k => rows.filter(r => r[1] === k).reduce((a, r) => a + (Number(r[2]) || 0), 0);
+    const sum = k => rows.filter(r => r.type === k).reduce((a, r) => a + (Number(r.amount) || 0), 0);
     const needs = sum('need'), wants = sum('want'), saveAmt = sum('save');
     const planned = needs + wants + saveAmt, left = income - planned;
     document.getElementById('t-needs').textContent = fmt(needs);
     document.getElementById('t-wants').textContent = fmt(wants);
     document.getElementById('t-save').textContent = fmt(saveAmt);
     document.getElementById('t-left').textContent = fmt(left);
+    document.getElementById('t-planned').textContent = fmt(planned);
+    const pct = v => income > 0 ? ' (' + Math.round(v / income * 100) + '%)' : '';
+    document.getElementById('t-needs').textContent += pct(needs);
+    document.getElementById('t-wants').textContent += pct(wants);
+    document.getElementById('t-save').textContent += pct(saveAmt);
     const base = Math.max(income, planned, 1);
-    document.getElementById('b-needs').style.width = (needs/base*100) + '%';
-    document.getElementById('b-wants').style.width = (wants/base*100) + '%';
-    document.getElementById('b-save').style.width = (saveAmt/base*100) + '%';
-    document.getElementById('b-left').style.width = (Math.max(0, left)/base*100) + '%';
+    document.getElementById('b-needs').style.width = (needs / base * 100) + '%';
+    document.getElementById('b-wants').style.width = (wants / base * 100) + '%';
+    document.getElementById('b-save').style.width = (saveAmt / base * 100) + '%';
+    document.getElementById('b-left').style.width = (Math.max(0, left) / base * 100) + '%';
     const w = [];
     if (left < 0) w.push('Over budget by ' + fmt(-left) + ' — planned spending exceeds income.');
-    if (income > 0 && needs/income > 0.5) w.push('Needs are above the 50% guide.');
-    if (income > 0 && saveAmt/income < 0.2) w.push('Savings are below the 20% guide.');
+    if (income > 0 && needs / income > 0.5) w.push('Needs are above the 50% guide.');
+    if (income > 0 && saveAmt / income < 0.2) w.push('Savings are below the 20% guide.');
     document.getElementById('warn').textContent = w.join(' ');
   }
-  function save() { localStorage.setItem('hb-rows', JSON.stringify(rows)); localStorage.setItem('hb-income', String(income)); }
+  function render() {
+    tbody.innerHTML = '';
+    rows.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      const nameTd = document.createElement('td');
+      const nameIn = document.createElement('input');
+      nameIn.value = r.name;
+      nameIn.oninput = () => { r.name = nameIn.value; save(); };
+      nameTd.appendChild(nameIn);
+      const typeTd = document.createElement('td');
+      const sel = document.createElement('select');
+      ['need', 'want', 'save'].forEach(t => {
+        const o = document.createElement('option');
+        o.value = t; o.textContent = t;
+        if (t === r.type) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.onchange = () => { r.type = sel.value; save(); totals(); };
+      typeTd.appendChild(sel);
+      const amtTd = document.createElement('td');
+      const amtIn = document.createElement('input');
+      amtIn.type = 'number'; amtIn.min = '0'; amtIn.step = 'any';
+      amtIn.value = String(r.amount);
+      amtIn.oninput = () => { r.amount = Number(amtIn.value) || 0; save(); totals(); };
+      amtTd.appendChild(amtIn);
+      const delTd = document.createElement('td');
+      const del = document.createElement('button');
+      del.className = 'del'; del.textContent = '✕'; del.title = 'remove';
+      del.onclick = () => { rows.splice(i, 1); save(); render(); };
+      delTd.appendChild(del);
+      tr.append(nameTd, typeTd, amtTd, delTd);
+      tbody.appendChild(tr);
+    });
+    totals();
+  }
   const inc = document.getElementById('income');
   inc.value = income;
   inc.oninput = () => { income = Number(inc.value) || 0; save(); totals(); };
-  document.getElementById('add').onclick = () => { rows.push(['New category','want',0]); save(); render(); };
+  document.getElementById('add').onclick = () => { rows.push({ name: 'New category', type: 'want', amount: 0 }); save(); render(); };
   render();
 </script>
 </body>
