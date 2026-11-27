@@ -1,0 +1,116 @@
+/* Household Budget Planner — the site's styling. One green header,
+white panels on a soft green-grey page, rounded corners, a flex row of
+total boxes and a four-part split bar. The layout narrows to one
+column on a phone: the table scrolls sideways instead of breaking. */
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #f2f6f2;
+  color: #1d2b1d;
+}
+
+header {
+  background: #166534;
+  color: #fff;
+  padding: 28px 20px;
+  text-align: center;
+}
+
+header h1 { margin: 0 0 6px; font-size: 28px; }
+header p { margin: 0; opacity: 0.85; }
+
+main {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.panel {
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+label {
+  font-size: 13px;
+  color: #5b6b5b;
+  display: block;
+  margin-bottom: 4px;
+}
+
+input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  border: 1px solid #cfd8cf;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+select {
+  padding: 7px 8px;
+  border: 1px solid #cfd8cf;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+table { width: 100%; border-collapse: collapse; }
+td, th { padding: 7px 6px; font-size: 14px; text-align: left; }
+th {
+  color: #5b6b5b;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+td input { padding: 7px 8px; }
+
+.totals { display: flex; gap: 14px; flex-wrap: wrap; }
+.tot {
+  flex: 1;
+  min-width: 140px;
+  background: #eef5ee;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+.tot .v { font-size: 22px; font-weight: 800; }
+.tot .l { font-size: 12px; color: #5b6b5b; }
+
+.bar {
+  display: flex;
+  height: 22px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+.bar div { height: 100%; }
+
+.warn { color: #b91c1c; font-size: 13px; min-height: 18px; }
+
+button {
+  background: #166534;
+  color: #fff;
+  border: 0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+button.del { background: #dc2626; padding: 6px 10px; }
+
+footer {
+  text-align: center;
+  color: #7a8798;
+  font-size: 12px;
+  padding: 20px;
+}
+
+@media (max-width: 560px) {
+  header h1 { font-size: 22px; }
+  .tot { min-width: 110px; }
+  .tot .v { font-size: 18px; }
+}

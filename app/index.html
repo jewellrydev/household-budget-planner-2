@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Household Budget Planner</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Household Budget Planner</h1>
+  <p>Plan the month in one page — needs, wants, savings, and what is left</p>
+</header>
+<main>
+  <div class="panel">
+    <label for="income">Monthly household income</label>
+    <input id="income" type="number" min="0" step="any" placeholder="e.g. 5000">
+  </div>
+  <div class="panel">
+    <table>
+      <thead><tr><th>Category</th><th>Type</th><th>Planned / month</th><th></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <button id="add">+ Add category</button>
+    <p class="warn" id="warn"></p>
+  </div>
+  <div class="panel">
+    <div class="totals">
+      <div class="tot"><div class="v" id="t-needs">0</div><div class="l">Needs (guide &le; 50%)</div></div>
+      <div class="tot"><div class="v" id="t-wants">0</div><div class="l">Wants (guide &le; 30%)</div></div>
+      <div class="tot"><div class="v" id="t-save">0</div><div class="l">Savings (guide &ge; 20%)</div></div>
+      <div class="tot"><div class="v" id="t-left">0</div><div class="l">Left unplanned</div></div>
+      <div class="tot"><div class="v" id="t-planned">0</div><div class="l">Planned total</div></div>
+    </div>
+    <div class="bar"><div id="b-needs" style="background:#2563eb"></div><div id="b-wants" style="background:#d97706"></div><div id="b-save" style="background:#166534"></div><div id="b-left" style="background:#d4dcd4"></div></div>
+  </div>
+  <footer>Guide: the 50/30/20 rule of thumb. Amounts in any currency. Your numbers are stored only in this browser. Built for make.fun.</footer>
+</main>
+<script type="module" src="main.js"></script>
+</body>
+</html>
